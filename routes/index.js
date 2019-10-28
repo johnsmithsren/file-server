@@ -1,7 +1,7 @@
 /*
  * @Auther: renjm
  * @Date: 2019-09-24 12:21:00
- * @LastEditTime: 2019-10-22 18:50:32
+ * @LastEditTime: 2019-10-28 15:20:12
  * @Description: 
  */
 const router = require('koa-router')()
@@ -16,18 +16,25 @@ const uploadPath = path.join(__dirname, '../hotpatch');
 const uploadTempPath = path.join(uploadPath, 'temp');
 const upload = multer({ dest: uploadTempPath });
 const targz = require('targz');
+const rimraf = require('rimraf')
 const getFileList = (startPath) => {
   let result = [];
   function finder(filePath) {
     let files = fs.readdirSync(filePath);
     files.forEach((val, index) => {
-      if (val === ".DS_Store") {
+      if (val === ".DS_Store" || val === 'temp') {
         return
       }
       let fPath = path.join(filePath, val);
       let stats = fs.statSync(fPath);
-      if (stats.isDirectory()) { finder(fPath); }
-      if (stats.isFile()) { result.push(fPath.slice(9)); }
+      if (stats.isDirectory()) {
+        result.push({
+          fileName: fPath.slice(9),
+          fileType: 'directory'
+        })
+        //  finder(fPath);
+      }
+      if (stats.isFile()) { result.push({ fileName: fPath.slice(9), fileType: 'file' }) }
     });
   }
   finder(startPath);
@@ -39,10 +46,13 @@ router.get('/', async (ctx, next) => {
 })
 
 router.post('/list', async (ctx, next) => {
-  let files = getFileList('hotpatch');
+  let initPath = _.get(ctx.request.body, 'fileName', '')
+  let startPath = path.join('hotpatch', initPath)
+  let files = getFileList(startPath);
   files = files.map(file => ({
-    fileName: file,
-    downloadUrl: `${config.domin}/hotpatch/${file}`
+    fileName: file.fileName,
+    fileType: file.fileType,
+    downloadUrl: `${config.domin}/hotpatch/${file.fileName}`
   }));
   return ctx.body = { data: files }
 })
@@ -82,6 +92,7 @@ router.get(/hotpatch\/(.*)$/, async (ctx, next) => {
     const path = `hotpatch/${fileName}`
     ctx.attachment(path);
     await send(ctx, path);
+    return ctx.body = '下载成功';
   } else {
     ctx.body = []
   }
@@ -119,7 +130,7 @@ router.post('/file/merge_chunks', async (ctx, next) => {
   // 针对gz文件处理，解压缩。
   if (_.endsWith(name, 'tar.gz')) {
     let destPath = path.resolve(__dirname, '../', 'hotpatch')
-    base.fileDecompress(filePath, destPath)
+    await base.fileDecompress(filePath, destPath)
   }
   ctx.status = 200;
   ctx.res.end('分片文件合并完成');
@@ -129,7 +140,15 @@ router.post('/file/merge_chunks', async (ctx, next) => {
 router.delete('/', async (ctx, next) => {
   const { fileName } = ctx.request.body;
   const path = `hotpatch/${fileName}`
-  fs.unlinkSync(path)
+  let stats = fs.statSync(path);
+  if (stats.isDirectory()) {
+    rimraf(path, function (err) {
+      console.log(err);
+    });
+  }
+  if (stats.isFile()) {
+    fs.unlinkSync(path)
+  }
   return ctx.body = '删除成功';
 })
 

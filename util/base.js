@@ -1,7 +1,7 @@
 /*
  * @Auther: renjm
  * @Date: 2019-09-25 14:39:32
- * @LastEditTime: 2019-10-22 18:33:43
+ * @LastEditTime: 2019-10-28 15:14:12
  * @Description: 
  */
 
@@ -55,15 +55,12 @@ module.exports.fileMerge = async (chunksPath, filePath, total, hash) => {
 
 // 解压缩
 module.exports.fileDecompress = async (filePath, destPath) => {
-    targz.decompress({
+    await targz.decompress({
         src: filePath,
         dest: destPath
     }, function (err) {
         if (err) {
             console.log(err);
-        } else {
-            fs.unlinkSync(filePath)
-            console.log("Done!");
         }
     });
 }
