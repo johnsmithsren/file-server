@@ -1,0 +1,13 @@
+{
+    "type": "webpack",
+    "entryPoint": 1,
+    "moduleAst": [
+        "body",
+        0,
+        "expression",
+        "argument",
+        "arguments",
+        0
+    ],
+    "knownPaths": {}
+}
